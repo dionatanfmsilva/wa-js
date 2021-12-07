@@ -25,6 +25,7 @@ import * as webpack from '../webpack';
 import {
   ButtonCollection,
   ChatModel,
+  ChatPresence,
   ChatStore,
   Clock,
   Constants,
@@ -318,6 +319,47 @@ export class Chat extends Emittery<ChatEventTypes> {
     return {
       wid: chat.id,
     };
+  }
+
+  async markAsComposing(chatId: string | Wid, duration?: number) {
+    const chat = assertGetChat(chatId);
+
+    await chat.presence.subscribe();
+
+    await ChatPresence.markComposing(chat);
+
+    if (chat.pausedTimerId) {
+      clearTimeout(chat.pausedTimerId);
+      chat.unset('pausedTimerId');
+    }
+
+    if (duration) {
+      chat.pausedTimerId = setTimeout(() => {
+        this.markPaused(chatId);
+      }, duration);
+    }
+  }
+
+  async markAsRecording(chatId: string | Wid, duration?: number) {
+    const chat = assertGetChat(chatId);
+
+    await chat.presence.subscribe();
+
+    await ChatPresence.markRecording(chat);
+
+    if (duration) {
+      chat.pausedTimerId = setTimeout(() => {
+        this.markPaused(chatId);
+      }, duration);
+    }
+  }
+
+  async markPaused(chatId: string | Wid) {
+    const chat = assertGetChat(chatId);
+
+    await chat.presence.subscribe();
+
+    return await ChatPresence.markPaused(chat);
   }
 
   /**
